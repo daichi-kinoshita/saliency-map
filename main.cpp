@@ -49,7 +49,6 @@ public :
   template<class T> friend Map2D operator * (T, Map2D);
   friend Map2D operator * (Map2D, Map2D);
   template<class T> friend Map2D operator / (Map2D, T);
-  template<class T> friend Map2D operator / (T, Map2D);
   friend Map2D operator / (Map2D, Map2D);
 
   Map2D& operator = (const Map2D&);
@@ -135,10 +134,13 @@ double Map2D::max(void)
 
 Map2D Map2D::abs(Map2D obj)
 {
-  Map2D result(obj.rows, obj.cols);
+  Map2D result = obj;
+  
+  int rows = obj.rows;
+  int cols = obj.cols;
 
-  for (int i=0;i<obj.rows;++i) {
-    for (int j=0;j<obj.cols;++j) {
+  for (int i=0;i<rows;++i) {
+    for (int j=0;j<cols;++j) {
       
       double tmp = obj.data[i][j];
       if (tmp < 0) {
@@ -338,19 +340,6 @@ template<class T> Map2D operator / (Map2D obj, T n)
   return result;
 }
 
-template<class T> Map2D operator / (T n, Map2D obj)
-{
- Map2D result = obj;
-
-  for (int i=0;i<obj.rows;++i) {
-    for (int j=0;j<obj.cols;++j) {
-      result.data[i][j] /= n;
-    }
-  }
-
-  return result;
-}
-
 Map2D operator / (Map2D left, Map2D right)
 {
   if (left.rows != right.rows || left.cols != right.cols) {
@@ -463,10 +452,9 @@ Map2D& Map2D::operator /= (const Map2D& obj)
 {
   for (int i=0;i<this->rows;++i) {
     for (int j=0;j<this->cols;++j) {
-      this->data[i][j] /= obj.data[i][j];
+	this->data[i][j] /= obj.data[i][j];
     }
-  }
-
+  }  
   return *this;
 }
 
@@ -506,10 +494,9 @@ Filter::Filter(int k_size)
   kernel = Map2D(k_size, k_size);
 }
 
-/* image * kernel */
 Map2D Filter::filter2D(Map2D image)
 {
-  Map2D tmp = image;
+  Map2D _image = image;
 
   int rows = image.rows;
   int cols = image.cols;
@@ -538,17 +525,17 @@ Map2D Filter::filter2D(Map2D image)
 	    xx = cols - 1;
 	  }
 
-	  sum += tmp.data[yy][xx] * kernel.data[dy+h_k_size][dx+h_k_size];
+	  sum += image.data[yy][xx] * kernel.data[dy+h_k_size][dx+h_k_size];
 	}
       }
 
-      image.data[y][x] = sum;
+      _image.data[y][x] = sum;
     }
   }
 
-  image.clampZero(0);
+  _image = Map2D::abs(_image);
 
-  return image;
+  return _image;
 }
 
 /* Gaussian class */
@@ -644,48 +631,75 @@ void Gabor::makeGaborKernel(double theta, double lambda, double gamma, double ps
 
 }
 
-/* calculate Saliency Map class */
+/* GaborBank class */
+class GaborBank
+{
+public :
+  vector<Gabor> kernel;
+  int size;
+  
+  GaborBank(int, int);
+  GaborBank(const GaborBank&);
+};
+
+GaborBank::GaborBank(int k_size, int orientation)
+{
+  size = orientation;
+
+  for (int i=0;i<orientation;++i) {
+    Gabor tmp(k_size, (double)i / orientation * M_PI);
+    kernel.push_back(tmp);
+  }
+}
+
+GaborBank::GaborBank(const GaborBank& obj)
+{
+  this->size = obj.size;
+  this->kernel = obj.kernel;
+}
+
+/* calculate SaliencyMap class */
 class SM
 {
 public :
-  static const int SCALE;               // num of gaussian pyramid
-  static const int ORIENTATION;         // num of orientation
-  static const int GAUSSIAN_K_SIZE;     // gaussian filter kernel size
-  static const int GABOR_K_SIZE;        // gabor filter kernel size
-  
   static Map2D calcSaliency(Map2D, Map2D, Map2D);
   //static Map2D calcSaliency(Map2D, Map2D, Map2D, Map2D, Map2D, Map2D);
+
 private :
   SM(){};
-  
+
+  static const int SCALE;               // num of pyramid
+  static const int ORIENTATIONS;        // num of orientation
+  static const int GAUSSIAN_K_SIZE;     // gaussian filter kernel size
+  static const int GABOR_K_SIZE;        // gabor filter kernel size
   static Gaussian gaussian_kernel;
-  static Gabor gabor_kernel000;
-  static Gabor gabor_kernel045;
-  static Gabor gabor_kernel090;
-  static Gabor gabor_kernel135;
+  static GaborBank gabor_bank;
 
   //static vector<Map2D> calcFlicker(Map2D, Map2D);
   //static vector<Map2D> calcMotion(vector<Map2D>, vector<Map2D>);
 
+  static vector<Map2D> makePyramidIntense(const vector<Map2D>&, const vector<Map2D>&, const vector<Map2D>&);
   static Map2D calcIntense(Map2D, Map2D, Map2D);
   
-  static vector<Map2D> calcOrientation(Map2D);
+  static vector<Map2D> makePyramidRed(vector<Map2D>, vector<Map2D>, vector<Map2D>);
+  static vector<Map2D> makePyramidGreen(vector<Map2D>, vector<Map2D>, vector<Map2D>);
+  static vector<Map2D> makePyramidBlue(vector<Map2D>, vector<Map2D>, vector<Map2D>);
+  static vector<Map2D> makePyramidYellow(vector<Map2D>, vector<Map2D>, vector<Map2D>);
 
+  static vector<Map2D> makePyramidOrientation(const vector<Map2D>&, int);
+  static Map2D calcOrientation(Map2D, int);
+
+  static vector<Map2D> makePyramid(Map2D);
   static Map2D downSampling(Map2D);
   static Map2D upSampling(Map2D);
-  static vector<Map2D> makePyramid(Map2D);
 };
 
 const int SM::SCALE = 9;
-const int SM::ORIENTATION = 4;
-const int SM::GAUSSIAN_K_SIZE = 7;
-const int SM::GABOR_K_SIZE = 17;
-
+const int SM::ORIENTATIONS = 4;
+const int SM::GAUSSIAN_K_SIZE = 5;
+const int SM::GABOR_K_SIZE = 5;
 Gaussian SM::gaussian_kernel = Gaussian(GAUSSIAN_K_SIZE);
-Gabor SM::gabor_kernel000 = Gabor(GABOR_K_SIZE, 0.0 * M_PI);
-Gabor SM::gabor_kernel045 = Gabor(GABOR_K_SIZE, 0.25 * M_PI);
-Gabor SM::gabor_kernel090 = Gabor(GABOR_K_SIZE, 0.5 * M_PI);
-Gabor SM::gabor_kernel135 = Gabor(GABOR_K_SIZE, 0.75 * M_PI);
+GaborBank SM::gabor_bank = GaborBank(GABOR_K_SIZE, ORIENTATIONS);
 
 Map2D SM::calcSaliency(Map2D r, Map2D g, Map2D b)
 {
@@ -693,26 +707,28 @@ Map2D SM::calcSaliency(Map2D r, Map2D g, Map2D b)
   vector<Map2D> pyramid_g = makePyramid(g);
   vector<Map2D> pyramid_b = makePyramid(b);
 
-  vector<Map2D> I;
-  for (int n=0;n<SCALE;++n) {
-    Map2D intense = calcIntense(pyramid_r[n], pyramid_g[n], pyramid_b[n]);
-    I.push_back(intense);
-  }
+  vector<Map2D> I = makePyramidIntense(pyramid_r, pyramid_g, pyramid_b);
 
-  vector<Map2D> Ori000;
-  vector<Map2D> Ori045;
-  vector<Map2D> Ori090;
-  vector<Map2D> Ori135;
+  double threshold = 0.1 * I[0].max();
+  pyramid_r[0].clampZero(threshold);
+  pyramid_g[0].clampZero(threshold);
+  pyramid_b[0].clampZero(threshold);
+  pyramid_r[0] /= I[0];
+  pyramid_g[0] /= I[0];
+  pyramid_b[0] /= I[0];
 
-  for (int n=0;n<SCALE;++n) {
-    vector<Map2D> orientation = calcOrientation(I[n]);
-    Ori000.push_back(orientation[0]);
-    Ori045.push_back(orientation[1]);
-    Ori090.push_back(orientation[2]);
-    Ori135.push_back(orientation[3]);
+  vector<Map2D> R = makePyramidRed(pyramid_r, pyramid_g, pyramid_b);
+  vector<Map2D> G = makePyramidGreen(pyramid_r, pyramid_g, pyramid_b);
+  vector<Map2D> B = makePyramidBlue(pyramid_r, pyramid_g, pyramid_b);
+  vector<Map2D> Y = makePyramidYellow(pyramid_r, pyramid_g, pyramid_b);
+
+  vector<vector<Map2D> > O;
+  for (int i=0;i<ORIENTATIONS;++i) {
+    vector<Map2D> tmp = makePyramidOrientation(I, i);
+    O.push_back(tmp);
   }
   
-  return Ori045[2];
+  return pyramid_r[0];
 }
 
 Map2D SM::calcIntense(Map2D r, Map2D g, Map2D b)
@@ -721,53 +737,111 @@ Map2D SM::calcIntense(Map2D r, Map2D g, Map2D b)
   
   return intense;
 }
+ 
+vector<Map2D> SM::makePyramidIntense(const vector<Map2D>& r, const vector<Map2D>& g, const vector<Map2D>& b)
+{
+  vector<Map2D> I;
 
-/*
-  vector<Map2D> SM::calcColor(Map2D r, Map2D g, Map2D b, Map2D I)
-  {
-  vector<Map2D> color;
+  for (int n=0;n<SCALE;++n) {
+    Map2D intense = calcIntense(r[n], g[n], b[n]);
+    I.push_back(intense);
+  }
+
+  return I;
+}
+
+vector<Map2D> SM::makePyramidRed(vector<Map2D> r, vector<Map2D> g, vector<Map2D> b)
+{
+  vector<Map2D> R;
+
+  for (int n=0;n<SCALE;++n) {
+    Map2D red = r[n] - (g[n] + b[n]) / 2.0;
+    red.clampZero(0);
+
+    R.push_back(red);
+  }
+
+  return R;
+}
+
+vector<Map2D> SM::makePyramidGreen(vector<Map2D> r, vector<Map2D> g, vector<Map2D> b)
+{
+  vector<Map2D> G;
+
+  for (int n=0;n<SCALE;++n) {
+    Map2D green = g[n] - (b[n] + r[n]) / 2.0;
+    green.clampZero(0);
+
+    G.push_back(green);
+  }
+
+  return G;
+}
+
+vector<Map2D> SM::makePyramidBlue(vector<Map2D> r, vector<Map2D> g, vector<Map2D> b)
+{
+  vector<Map2D> B;
+
+  for (int n=0;n<SCALE;++n) {
+    Map2D blue = b[n] - (r[n] + g[n]) / 2.0;
+    blue.clampZero(0);
+
+    B.push_back(blue);
+  }
+
+  return B;
+}
+
+vector<Map2D> SM::makePyramidYellow(vector<Map2D> r, vector<Map2D> g, vector<Map2D> b)
+{
+  vector<Map2D> Y;
+
+  for (int n=0;n<SCALE;++n) {
+    Map2D yellow = (r[n] + g[n]) / 2.0 - Map2D::abs(r[n] - g[n]) / 2.0 - b[n];
+    yellow.clampZero(0);
+
+    Y.push_back(yellow);
+  }
+
+  return Y;
+}
+
+Map2D SM::calcOrientation(Map2D intense, int o_number)
+{
+  if (o_number < 0 || ORIENTATIONS <= o_number) {
+    cerr << "ERROR: SM::calcOrientation(Map2D, int)  o_nubmer out of range" << endl;
+    exit(1);
+  }
+
+  Map2D orientation = gabor_bank.kernel[o_number].filter2D(intense);
   
-  double threshold = 0.1 * I.max();
-  r.clampZero(threshold);
-  g.clampZero(threshold);
-  b.clampZero(threshold);
+  return orientation;
+}
 
-  r /= I;
-  g /= I;
-  b /= I;
-
-  Map2D R = r - (g + b) / 2.0;
-  Map2D G = g - (b + r) / 2.0;
-  Map2D B = b - (r + g) / 2.0;
-  Map2D Y = (r + g) / 2.0 - Map2D::abs(r - g) / 2.0 - b;
-
-  R.clampZero(0);
-  G.clampZero(0);
-  B.clampZero(0);
-  Y.clampZero(0);
-
-  color.push_back(R);
-  color.push_back(G);
-  color.push_back(B);
-  color.push_back(Y);
-
-  return color;
-  }*/
-
-vector<Map2D> SM::calcOrientation(Map2D intense)
+vector<Map2D> SM::makePyramidOrientation(const vector<Map2D>& intense, int o_number)
 {
   vector<Map2D> O;
-    
-  Map2D gabor000 = gabor_kernel000.filter2D(intense);
-  O.push_back(gabor000);
-  Map2D gabor045 = gabor_kernel045.filter2D(intense);
-  O.push_back(gabor045);
-  Map2D gabor090 = gabor_kernel090.filter2D(intense);
-  O.push_back(gabor090);
-  Map2D gabor135 = gabor_kernel135.filter2D(intense);
-  O.push_back(gabor135);
+
+  for (int n=0;n<SCALE;++n) {
+    Map2D orientation = calcOrientation(intense[n], o_number);
+    O.push_back(orientation);
+  }
 
   return O;
+}
+
+vector<Map2D> SM::makePyramid(Map2D image)
+{
+  vector<Map2D> pyramid;
+
+  pyramid.push_back(image); // original image
+
+  for (int i=0;i<SCALE-1;++i) {
+    Map2D tmp = downSampling(pyramid[i]);
+    pyramid.push_back(tmp);
+  }
+
+  return pyramid;
 }
 
 Map2D SM::downSampling(Map2D image)
@@ -781,7 +855,7 @@ Map2D SM::downSampling(Map2D image)
   }
 
   Map2D _image(rows, cols);
-
+ 
   image = gaussian_kernel.filter2D(image);
 
   for (int y=0;y<rows;++y) {
@@ -811,20 +885,6 @@ Map2D SM::upSampling(Map2D image)
   }
 
   return _image;
-}
-
-vector<Map2D> SM::makePyramid(Map2D image)
-{
-  vector<Map2D> pyramid;
-
-  pyramid.push_back(image); // original image
-
-  for (int i=0;i<SCALE-1;++i) {
-    Map2D tmp = downSampling(pyramid[i]);
-    pyramid.push_back(tmp);
-  }
-
-  return pyramid;
 }
 
 
@@ -918,7 +978,7 @@ int main(int argc, char* argv[])
       break;
     }
 
-    sprintf(pic_name, "output/S/frame%05d.pgm", frame_cnt);
+    sprintf(pic_name, "output/O_0/frame%05d.pgm", frame_cnt);
     flag = saveImage(pic_name, SM::calcSaliency(frame_r, frame_g, frame_b));
 
     frame_cnt++;
