@@ -679,7 +679,6 @@ private :
   //static vector<Map2D> calcMotion(vector<Map2D>, vector<Map2D>);
 
   static vector<Map2D> makePyramidIntense(const vector<Map2D>&, const vector<Map2D>&, const vector<Map2D>&);
-  static Map2D calcIntense(Map2D, Map2D, Map2D);
   
   static vector<Map2D> makePyramidRed(vector<Map2D>, vector<Map2D>, vector<Map2D>);
   static vector<Map2D> makePyramidGreen(vector<Map2D>, vector<Map2D>, vector<Map2D>);
@@ -696,8 +695,8 @@ private :
 
 const int SM::SCALE = 9;
 const int SM::ORIENTATIONS = 4;
-const int SM::GAUSSIAN_K_SIZE = 5;
-const int SM::GABOR_K_SIZE = 5;
+const int SM::GAUSSIAN_K_SIZE = 7;
+const int SM::GABOR_K_SIZE = 7;
 Gaussian SM::gaussian_kernel = Gaussian(GAUSSIAN_K_SIZE);
 GaborBank SM::gabor_bank = GaborBank(GABOR_K_SIZE, ORIENTATIONS);
 
@@ -709,13 +708,13 @@ Map2D SM::calcSaliency(Map2D r, Map2D g, Map2D b)
 
   vector<Map2D> I = makePyramidIntense(pyramid_r, pyramid_g, pyramid_b);
 
-  double threshold = 0.1 * I[0].max();
-  pyramid_r[0].clampZero(threshold);
-  pyramid_g[0].clampZero(threshold);
-  pyramid_b[0].clampZero(threshold);
-  pyramid_r[0] /= I[0];
-  pyramid_g[0] /= I[0];
-  pyramid_b[0] /= I[0];
+  //double threshold = 0.1 * I[0].max();
+  //pyramid_r[0].clampZero(threshold);
+  //pyramid_g[0].clampZero(threshold);
+  //pyramid_b[0].clampZero(threshold);
+  //pyramid_r[0] /= I[0];
+  //pyramid_g[0] /= I[0];
+  //pyramid_b[0] /= I[0];
 
   vector<Map2D> R = makePyramidRed(pyramid_r, pyramid_g, pyramid_b);
   vector<Map2D> G = makePyramidGreen(pyramid_r, pyramid_g, pyramid_b);
@@ -728,22 +727,15 @@ Map2D SM::calcSaliency(Map2D r, Map2D g, Map2D b)
     O.push_back(tmp);
   }
   
-  return pyramid_r[0];
+  return R[0];
 }
 
-Map2D SM::calcIntense(Map2D r, Map2D g, Map2D b)
-{
-  Map2D intense = r + g + b / 3.0;
-  
-  return intense;
-}
- 
 vector<Map2D> SM::makePyramidIntense(const vector<Map2D>& r, const vector<Map2D>& g, const vector<Map2D>& b)
 {
   vector<Map2D> I;
 
   for (int n=0;n<SCALE;++n) {
-    Map2D intense = calcIntense(r[n], g[n], b[n]);
+    Map2D intense = r[n] + g[n] + b[n] / 3.0;
     I.push_back(intense);
   }
 
@@ -754,8 +746,9 @@ vector<Map2D> SM::makePyramidRed(vector<Map2D> r, vector<Map2D> g, vector<Map2D>
 {
   vector<Map2D> R;
 
+  Map2D red;
   for (int n=0;n<SCALE;++n) {
-    Map2D red = r[n] - (g[n] + b[n]) / 2.0;
+    red = r[n] - (g[n] + b[n]) / 2.0;
     red.clampZero(0);
 
     R.push_back(red);
@@ -818,12 +811,17 @@ Map2D SM::calcOrientation(Map2D intense, int o_number)
   return orientation;
 }
 
-vector<Map2D> SM::makePyramidOrientation(const vector<Map2D>& intense, int o_number)
+vector<Map2D> SM::makePyramidOrientation(const vector<Map2D>& I, int o_number)
 {
+  if (o_number < 0 || ORIENTATIONS <= o_number) {
+    cerr << "ERROR: SM::calcOrientation(const Map2D&, int)  o_nubmer out of range" << endl;
+    exit(1);
+  }
+
   vector<Map2D> O;
 
   for (int n=0;n<SCALE;++n) {
-    Map2D orientation = calcOrientation(intense[n], o_number);
+    Map2D orientation = gabor_bank.kernel[o_number].filter2D(I[n]);
     O.push_back(orientation);
   }
 
@@ -844,6 +842,7 @@ vector<Map2D> SM::makePyramid(Map2D image)
   return pyramid;
 }
 
+
 Map2D SM::downSampling(Map2D image)
 {
   int rows = (int)(image.rows / 2.0);
@@ -856,18 +855,19 @@ Map2D SM::downSampling(Map2D image)
 
   Map2D _image(rows, cols);
  
-  image = gaussian_kernel.filter2D(image);
+  Map2D tmp = gaussian_kernel.filter2D(image);
 
   for (int y=0;y<rows;++y) {
     for (int x=0;x<cols;++x) {
-      _image.data[y][x] = image.data[(int)(2*y)][(int)(2*x)];
+      _image.data[y][x] = tmp.data[(int)(2*y)][(int)(2*x)];
     }
   }
 
   return _image;
 }
 
-Map2D SM::upSampling(Map2D image)
+
+Map2D SM::upSampling(Map2D image) //  bilinear
 {
   int rows = image.rows * 2;
   int cols = image.cols * 2;
@@ -881,6 +881,11 @@ Map2D SM::upSampling(Map2D image)
       _image.data[2*y][2*x+1] = value;
       _image.data[2*y+1][2*x] = value;
       _image.data[2*y+1][2*x+1] = value;
+      
+      /*_image.data[2*y][2*x] = value;
+      _image.data[2*y][2*x+1] = (value * image.data[y][x+1]) / 2.0;
+      _image.data[2*y+1][2*x] = (value * image.data[y+1][x]) / 2.0;
+      _image.data[2*y+1][2*x+1] = (value * image.data[y+1][x+1]) / 2.0;*/
     }
   }
 
@@ -977,8 +982,8 @@ int main(int argc, char* argv[])
     if (!flag) {
       break;
     }
-
-    sprintf(pic_name, "output/O_0/frame%05d.pgm", frame_cnt);
+    
+    sprintf(pic_name, "output/S/frame%05d.pgm", frame_cnt);
     flag = saveImage(pic_name, SM::calcSaliency(frame_r, frame_g, frame_b));
 
     frame_cnt++;
