@@ -8,7 +8,7 @@
 using namespace std;
 using namespace cv;
 
-static const int CMD_LINE_NUM = 5;
+static const int CMD_LINE_NUM = 6;
 
 void dispProgressBar(double);
 
@@ -38,7 +38,7 @@ void dispProgressBar(double percent)
 int main(int argc, char* argv[])
 {
   if (argc != CMD_LINE_NUM) {
-    cerr << "ERROR: usage " << argv[0] << " <input file> <output file> <fps> <sampling interval>" << endl;
+    cerr << "ERROR: usage " << argv[0] << " <input file> <output file> <fps> <sampling interval> <sampling frames>" << endl;
     return -1;
   }
 
@@ -60,31 +60,42 @@ int main(int argc, char* argv[])
   output.open(output_path, codec, output_fps, Size(cols , rows));
 
   int sampling_interval = atoi(argv[4]);
+  int sampling_frames = atoi(argv[5]);
 
   if (sampling_interval == 0) {
      cerr << "ERROR: sampling interval < 1" << endl;
     return -1;
   }
 
-  cout << "[dawn-sampling]" << endl;
+  cout << "[down-sampling]" << endl;
   cout << "input file : " << argv[1] << endl;
   cout << "output file: " << argv[2] << endl;
 
   int frame_cnt = 0;
   
   for(;;) {
-      input >> frame;
-      
-      if (frame.empty()) {
-	break;
-      }
-      frame_cnt++;
 
-      if (frame_cnt % sampling_interval == 0) {
-	dispProgressBar((double)frame_cnt / frame_num * 100.0);
+    if (frame_cnt % sampling_interval == 0) {
+      for (int i=0;i<sampling_frames;++i) {
+	
+	input >> frame;
+	if (frame.empty()) {
+	  break;
+	}
+	frame_cnt++;
+	
 	output << frame;
+	
+	dispProgressBar((double)frame_cnt / frame_num * 100.0);
       }
+    }
 
+    input >> frame; 
+    if (frame.empty()) {
+      break;
+    }
+    frame_cnt++;
+      
   }
 
   cout << endl;
