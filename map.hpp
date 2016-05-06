@@ -1,5 +1,5 @@
-#ifndef INCLUDE_MAP_HPP
-#define INCLUDE_MAP_HPP
+#ifndef __MAP_HPP
+#define __MAP_HPP
 
 #include <iostream>
 #include <vector>
@@ -7,7 +7,6 @@
 #include <cstdlib>
 #include <cfloat>
 #include <algorithm>
-#include "map.hpp"
 
 using namespace std;
 
@@ -29,7 +28,7 @@ public :
   double max();
   static Map2D abs(Map2D);
   void resize(int, int);
-  void normalizeRange(void);
+  void normalizeRange(int);
 
   template<class T> friend Map2D operator + (Map2D, T);
   template<class T> friend Map2D operator + (T, Map2D);
@@ -177,15 +176,26 @@ void Map2D::resize(int rows, int cols)
   }
 }
 
-void Map2D::normalizeRange(void)
+void Map2D::normalizeRange(int range)
 {
-  double minimum = this->min();
-  double maximum = this->max();
-  *this -= minimum;
-  if (minimum < maximum) {
-    *this /= maximum - minimum;
+  double min = this->min();
+  double max = this->max();
+  *this -= min;
+  if (min < max) {
+    *this /= (max - min);
+    *this *= range;
   }
 
+}
+
+bool Map2D::empty()
+{
+  if (this->rows == 0 || this->cols == 0) {
+    return true;
+  }
+  else {
+    return false;
+  }
 }
 
 template<class T> Map2D operator + (Map2D obj, T n)
@@ -324,6 +334,10 @@ template<class T> Map2D operator / (Map2D obj, T n)
 {
  Map2D result = obj;
 
+ if (n == 0) {
+   return result;
+ }
+
   for (int i=0;i<obj.rows;++i) {
     for (int j=0;j<obj.cols;++j) {
       result.data[i][j] /= n;
@@ -344,7 +358,10 @@ Map2D operator / (Map2D left, Map2D right)
 
   for (int i=0;i<left.rows;++i) {
     for (int j=0;j<left.cols;++j) {
-      result.data[i][j] /= right.data[i][j];
+      double value = right.data[i][j];
+      if (value != 0.0) {
+	result.data[i][j] /= value;
+      }
     }
   }
 
@@ -445,20 +462,15 @@ Map2D& Map2D::operator /= (const Map2D& obj)
 {
   for (int i=0;i<this->rows;++i) {
     for (int j=0;j<this->cols;++j) {
+      double value = obj.data[i][j];
+      if (value != 0.0) {
 	this->data[i][j] /= obj.data[i][j];
+      }
     }
   }  
   return *this;
 }
 
-bool Map2D::empty()
-{
-  if (this->rows == 0 || this->cols == 0) {
-    return true;
-  }
-  else {
-    return false;
-  }
-}
+
 
 #endif

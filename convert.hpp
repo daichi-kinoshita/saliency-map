@@ -1,15 +1,13 @@
-#ifndef INCLUDE_CONVERT_HPP
-#define INCULDE_CONVERT_HPP
+#ifndef __CONVERT_HPP
+#define __CONVERT_HPP
 
 #include <fstream>
-#include <opencv2/opencv.hpp>
 #include "map.hpp"
 
 using namespace std;
 
 bool getImage(char*, Map2D&);
 bool saveImage(char*, Map2D);
-bool saveImage(char*, cv::Mat);
 bool saveImage(char*, vector<Map2D>);
 
 bool getImage(char* pic_name, Map2D& image)
@@ -23,8 +21,10 @@ bool getImage(char* pic_name, Map2D& image)
   string magic_number;
   int rows;
   int cols;
+  int max;
   pic_stream >> magic_number;
   pic_stream >> cols >> rows;
+  pic_stream >> max;
 
   image.set(rows, cols);
 
@@ -33,45 +33,13 @@ bool getImage(char* pic_name, Map2D& image)
   for (int y=0;y<rows;++y) {
     for (int x=0;x<cols;++x) {
       pic_stream >> data;
-      image.data[y][x] = data / 255.0;
+      image.data[y][x] = data;
     }
   }
   
   return true;
 }
 
-/* save image (.pgm) */
-bool saveImage(char* file_name, cv::Mat image)
-{
-  if (file_name == NULL) {
-    return false;
-  }
-  if (image.empty()) {
-    return false;
-  }
-  
-  ofstream pic_stream(file_name, ios::out);
-   
-  int rows = image.rows;
-  int cols = image.cols;
-  int step = image.step;
-  int elem_size = image.elemSize();
-
-  //header
-  pic_stream << "P2" << endl;
-  pic_stream << cols << " " << rows << endl;
-  pic_stream << 255 << endl;
-  
-  //data (0-255)
-  for (int y=0;y<rows;++y) {
-    for (int x=0;x<cols;++x) {
-      pic_stream << image.data[y * step + x * elem_size] << " ";
-    }
-    pic_stream << endl;
-  }
-
-  return true;
-}
 
 bool saveImage(char* file_name, Map2D image)
 {
@@ -84,17 +52,19 @@ bool saveImage(char* file_name, Map2D image)
   
   ofstream pic_stream(file_name, ios::out);
    
+  image = Map2D::abs(image); 
+  image.normalizeRange(255);
+
   int rows = image.rows;
   int cols = image.cols;
+  int max = (int)image.max();
 
   //header
   pic_stream << "P2" << endl;
   pic_stream << cols << " " << rows << endl;
-  pic_stream << 255 << endl;
+  pic_stream << max << endl;
   
   //data (0-255)
-  image.normalizeRange();
-  image *= 255; 
   for (int y=0;y<rows;++y) {
     for (int x=0;x<cols;++x) {
       pic_stream << (int)image.data[y][x] << " ";
@@ -131,8 +101,7 @@ bool saveImage(char* file_name, vector<Map2D> image)
   //data (0-255)
 
   for (int c=0;c<image.size();++c) {
-    image[c].normalizeRange();
-    image[c] *= 255;
+    image[c].normalizeRange(255);
   }
 
   for (int y=0;y<rows;++y) {
