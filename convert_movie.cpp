@@ -10,9 +10,7 @@ using namespace cv;
 
 #define CMD_LINE_NUM 3
 
-bool saveImage(char*, Mat);
-
-/* save image (.pgm) */
+/* save image (.pnm) */
 bool saveImage(char* file_name, Mat image)
 {
   if (file_name == NULL) {
@@ -28,21 +26,24 @@ bool saveImage(char* file_name, Mat image)
   int cols = image.cols;
   int step = image.step;
   int elem_size = image.elemSize();
+  int channels = image.channels();
   double max;
-  
+
   minMaxLoc(image, NULL, &max);
 
   //header
-  pic_stream << "P2" << endl;
+  pic_stream << "P3" << endl;
   pic_stream << cols << " " << rows << endl;
   pic_stream << (int)max << endl;
 
   //data (0-255)
   for (int y=0;y<rows;++y) {
     for (int x=0;x<cols;++x) {
-      pic_stream << image.data[y * step + x * elem_size] << " ";
+      for (int c=0;c<channels;++c) {
+	pic_stream << (int)image.data[y * step + x * elem_size + c] << " ";
+      }
+      pic_stream << endl;
     }
-    pic_stream << endl;
   }
 
   return true;
@@ -61,8 +62,6 @@ int main(int argc, char* argv[])
   
   /* init input movie */
   String input_path = argv[1];
-  double fps = 30;
-  int codec = VideoWriter::fourcc('X', 'V', 'I', 'D');
   VideoCapture input(input_path);
 
   if (!input.isOpened()) {
@@ -77,19 +76,15 @@ int main(int argc, char* argv[])
     if (frame.empty()) {
       break;
     }
+
+
+    sprintf(file_name, "%s/RGB/frame%05d.pnm", argv[2], frame_cnt);
     
-    vector<Mat> color;
-    split(frame, color);
-
-    char color_name[3] = {'B', 'G', 'R'};
-
-    for (int i=0;i<3;++i) {
-      sprintf(file_name, "%s/%c/frame%05d.pgm", argv[2], color_name[i], frame_cnt);
-      if (!saveImage(file_name, color[i])) {
-	cerr << "ERROR: " << file_name << " open failed" << endl;
+    imwrite(file_name, frame);
+    /*if (!saveImage(file_name, frame)) {
+       cerr << "ERROR: " << file_name << " open failed" << endl;
 	break;
-      }
-    }
+	}*/
 
     frame_cnt++;
   }
