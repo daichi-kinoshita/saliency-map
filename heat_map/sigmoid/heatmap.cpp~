@@ -1,0 +1,114 @@
+#include <fstream>
+#include <sstream>
+#include <iostream>
+#include <cmath>
+
+using namespace std;
+
+class Map
+{
+public :
+  Map(char*);
+  ~Map(void);
+
+  void writeHeatMap(char*, int, double);
+
+private :
+  int** data;
+  int rows, cols;
+  int max;
+
+  int sigmoidToneCurve_R(int, double);
+  int sigmoidToneCurve_G(int, double);
+
+  static const int I_MAX = 255; //max intense
+  static const double SIGMOID_TH_R = 0.15; //sigmoid threshold red
+  static const double SIGMOID_TH_G = 0.65; //sigmoid threshold green
+};
+
+Map::Map(char* file_name)
+{
+  ifstream input(file_name);
+
+  //read header
+  string magic_num;
+  string comment;
+  getline(input, magic_num);
+  getline(input, comment);
+  input >> cols >> rows;
+  input >> max;
+
+  //read data
+  data = new int*[rows];
+  for (int y=0;y<rows;++y) {
+    data[y] = new int[cols];
+  }
+
+  for (int y=0;y<rows;++y) {
+    for (int x=0;x<cols;++x) {
+      input >> data[y][x];
+    }
+  }
+
+}
+
+Map::~Map()
+{
+  for (int i=0;i<rows;++i) {
+    delete[] data[i];
+  }
+  delete[] data;
+}
+
+int Map::sigmoidToneCurve_R(int val, double a)
+{
+  return I_MAX * (1.0 / (1.0 + exp(-a * (val - SIGMOID_TH_R*I_MAX)) ));
+}
+
+int Map::sigmoidToneCurve_G(int val, double a)
+{
+  return I_MAX - (I_MAX * (1.0 / (1.0 + exp(-a * (val - SIGMOID_TH_G*I_MAX)) )));
+}
+
+//th: threshold a: sigmoid gain
+void Map::writeHeatMap(char* file_name, int th=48, double a=0.03)
+{
+
+  ofstream output(file_name);
+
+  //write header 
+  string magic_num = "P3";
+  string comment = "# ascii color scale";
+  output << magic_num << endl;
+  output << comment << endl;
+  output << cols << " " << rows << endl;
+  output << max << endl;
+
+  //write data
+  int r, g, b;
+  for (int y=0;y<rows;++y) {
+    for (int x=0;x<cols;++x) {
+      if (data[y][x] < th) {
+	output << I_MAX << " " << I_MAX << " " << I_MAX << endl;
+      }
+      else {
+	r = sigmoidToneCurve_R(data[y][x], a);
+	g = sigmoidToneCurve_G(data[y][x], a);
+	b = 0;
+
+	output << r << " " << g << " " << b << endl;
+      }
+    }
+  }
+}
+
+// argv[1]: input file name(.pgm)
+// argv[2]: output file name(.pnm)
+int main(int argc, char *argv[])
+{
+  Map img(argv[1]);
+  
+  img.writeHeatMap(argv[2], 30);
+
+  return 0;
+}

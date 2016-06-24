@@ -1,0 +1,74 @@
+#include <fstream>
+#include <sstream>
+#include <iostream>
+#include <cmath>
+#include <cstdlib>
+
+using namespace std;
+
+int toneCurve_R(int val)
+{
+  if (val < (255 / 2.0)) {
+    return 0;
+  }
+  else {
+    return 2*val - 255;
+  }
+}
+
+int toneCurve_G(int val)
+{
+  if (val < (255 / 4.0)) {
+    return 4*val;
+  } 
+  else if (val < (3.0*255 / 4.0)) {
+    return 255;
+  }
+  else {
+    return 4*255 - 4*val;
+  }
+}
+
+int toneCurve_B(int val)
+{
+  if (val < (255 / 2.0)) {
+    return 255 - 2*val;
+  }
+  else {
+    return 0;
+  }   
+}
+
+int main(int argc, char* argv[])
+{
+  ofstream output(argv[1]);
+  
+  string magic_num = "P3";
+  string comment = "# ascii color scale";
+  int rows = 255;
+  int cols = 50;
+  int max = 255;
+
+  output << magic_num << endl;
+  output << comment << endl;
+  output << cols << " " << rows << endl;
+  output << max << endl;
+
+  int r, g, b;
+  for (int y=rows;y>=0;--y) {
+    for (int x=0;x<cols;++x) {
+      if (y < 48) {
+	output << 255 << " " << 255 << " " << 255 << endl;
+      }
+      else {
+	r = toneCurve_R(y);
+	g = toneCurve_G(y);
+	b = toneCurve_G(y);
+
+	output << r << " " << g << " " << b << endl;
+      }
+    }
+  }
+
+  return 0;
+}
