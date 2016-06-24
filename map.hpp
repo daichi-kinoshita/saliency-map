@@ -1,7 +1,15 @@
+/*---------------------------------------------------------------------
+It is a library that contains a class dealing with image
+
+Map2D class
+RGB class
+
+----------------------------------------------------------------------*/
+
 #ifndef __MAP_HPP
 #define __MAP_HPP
 
-#include <iostream>
+#include <fstream>
 #include <vector>
 #include <cmath>
 #include <cstdlib>
@@ -9,27 +17,30 @@
 #include <algorithm>
 
 using namespace std;
-
+  
 class Map2D
 {
-public :
-  vector<vector<double> > data;
+private :
   int rows;
   int cols;
-
-  Map2D();
+    
+public :
+  vector<vector<double> > data;
+    
+  Map2D(void);
   Map2D(int, int);
   Map2D(const Map2D&);
-
-  void set(int, int);
-  bool empty();
-  void clampZero(double);
-  double min();
-  double max();
-  static Map2D abs(Map2D);
-  void resize(int, int);
-  void normalizeRange(int);
-
+    
+  int Rows(void) const;
+  int Cols(void) const;
+  void Resize(int, int);
+  bool Empty(void);
+  void ClampZero(double);
+  double Min(void);
+  double Max(void);
+  static Map2D Abs(Map2D);
+  void NormalizeRange(int);
+    
   template<class T> friend Map2D operator + (Map2D, T);
   template<class T> friend Map2D operator + (T, Map2D);
   friend Map2D operator + (Map2D, Map2D);
@@ -55,7 +66,7 @@ public :
 };
 
 
-Map2D::Map2D()
+Map2D::Map2D(void)
 {
   rows = 0;
   cols = 0;
@@ -63,28 +74,38 @@ Map2D::Map2D()
 
 Map2D::Map2D(int rows, int cols)
 {
-  set(rows, cols);
+  Resize(rows, cols);
 }
 
 Map2D::Map2D(const Map2D& obj)
 {
-  this->set(obj.rows, obj.cols);
+  this->Resize(obj.Rows(), obj.Cols());
 
-  for (int i=0;i<obj.rows;++i) {
-    for (int j=0;j<obj.cols;++j) {
+  for (int i=0;i<obj.Rows();++i) {
+    for (int j=0;j<obj.Cols();++j) {
       this->data[i][j] = obj.data[i][j];
     }
   }
 }
 
-void Map2D::set(int rows, int cols)
+int Map2D::Rows(void) const
+{
+  return rows;
+}
+
+int Map2D::Cols(void) const
+{
+  return cols;
+}
+
+void Map2D::Resize(int rows, int cols)
 {
   data = vector<vector<double> >(rows, vector<double>(cols, 0));
   this->rows = rows;
   this->cols = cols;
 }
 
-void Map2D::clampZero(double x)
+void Map2D::ClampZero(double x)
 {
   for (int i=0;i<this->rows;++i) {
     for (int j=0;j<this->cols;++j) {
@@ -98,7 +119,7 @@ void Map2D::clampZero(double x)
   }
 }
 
-double Map2D::min(void)
+double Map2D::Min(void)
 {
   double min = DBL_MAX;
   for (int y=0;y<this->rows;++y) {
@@ -111,7 +132,7 @@ double Map2D::min(void)
   return min;
 }
 
-double Map2D::max(void)
+double Map2D::Max(void)
 {
   double max = 0.0;
   for (int y=0;y<rows;++y) {
@@ -124,7 +145,7 @@ double Map2D::max(void)
   return max;
 }
 
-Map2D Map2D::abs(Map2D obj)
+Map2D Map2D::Abs(Map2D obj)
 {
   Map2D result = obj;
   
@@ -145,41 +166,10 @@ Map2D Map2D::abs(Map2D obj)
   return result;
 }
 
-void Map2D::resize(int rows, int cols)
+void Map2D::NormalizeRange(int range)
 {
-  Map2D tmp = *this;
-
-  this->data = vector<vector<double> >(rows, vector<double>(cols, 0));
-  this->rows = rows;
-  this->cols = cols;
-
-  int _rows;
-  int _cols;
-  if (tmp.rows < this->rows) {
-    _rows = tmp.rows;
-  }
-  else {
-    _rows = this->rows;
-  }
-
-  if (tmp.cols < this->cols) {
-    _cols = tmp.cols;
-  }
-  else {
-    _cols = this->cols;
-  }
-
-  for (int y=0;y<_rows;++y) {
-    for (int x=0;x<_cols;++y) {
-      this->data[y][x] = tmp.data[y][x];
-    }
-  }
-}
-
-void Map2D::normalizeRange(int range)
-{
-  double min = this->min();
-  double max = this->max();
+  double min = this->Min();
+  double max = this->Max();
   *this -= min;
   if (min < max) {
     *this /= (max - min);
@@ -188,7 +178,7 @@ void Map2D::normalizeRange(int range)
 
 }
 
-bool Map2D::empty()
+bool Map2D::Empty()
 {
   if (this->rows == 0 || this->cols == 0) {
     return true;
@@ -202,8 +192,8 @@ template<class T> Map2D operator + (Map2D obj, T n)
 {
   Map2D result = obj;
 
-  for (int i=0;i<obj.rows;++i) {
-    for (int j=0;j<obj.cols;++j) {
+  for (int i=0;i<obj.Rows();++i) {
+    for (int j=0;j<obj.Cols();++j) {
       result.data[i][j] += n;
     }
   }
@@ -215,8 +205,8 @@ template<class T> Map2D operator + (T n, Map2D obj)
 {
   Map2D result = obj;
 
-  for (int i=0;i<obj.rows;++i) {
-    for (int j=0;j<obj.cols;++j) {
+  for (int i=0;i<obj.Rows();++i) {
+    for (int j=0;j<obj.Cols();++j) {
       result.data[i][j] += n;
     }
   }
@@ -226,15 +216,15 @@ template<class T> Map2D operator + (T n, Map2D obj)
 
 Map2D operator + (Map2D left, Map2D right)
 {
-  if (left.rows != left.rows || right.cols != right.cols) {
+  if (left.Rows() != left.Rows() || right.Cols() != right.Cols()) {
     cerr << "ERROR : Map2D class operator \"+\" failed" << endl;
     exit(1);
   }
 
   Map2D result = left;
 
-  for (int i=0;i<left.rows;++i) {
-    for (int j=0;j<left.cols;++j) {
+  for (int i=0;i<left.Rows();++i) {
+    for (int j=0;j<left.Cols();++j) {
       result.data[i][j] += right.data[i][j];
     }
   }
@@ -244,10 +234,10 @@ Map2D operator + (Map2D left, Map2D right)
 
 template<class T> Map2D operator - (Map2D obj, T n)
 {
- Map2D result = obj;
+  Map2D result = obj;
 
-  for (int i=0;i<obj.rows;++i) {
-    for (int j=0;j<obj.cols;++j) {
+  for (int i=0;i<obj.Rows();++i) {
+    for (int j=0;j<obj.Cols();++j) {
       result.data[i][j] -= n;
     }
   }
@@ -257,10 +247,10 @@ template<class T> Map2D operator - (Map2D obj, T n)
 
 template<class T> Map2D operator - (T n, Map2D obj)
 {
- Map2D result = obj;
+  Map2D result = obj;
 
-  for (int i=0;i<obj.rows;++i) {
-    for (int j=0;j<obj.cols;++j) {
+  for (int i=0;i<obj.Rows();++i) {
+    for (int j=0;j<obj.Cols();++j) {
       result.data[i][j] -= n;
     }
   }
@@ -270,15 +260,15 @@ template<class T> Map2D operator - (T n, Map2D obj)
 
 Map2D operator - (Map2D left, Map2D right)
 {
-  if (left.rows != right.rows || left.cols != right.cols) {
+  if (left.Rows() != right.Rows() || left.Cols() != right.Cols()) {
     cerr << "ERROR : Map2D class operator \"-\" failed" << endl;
     exit(1);
   }
 
   Map2D result = left;
 
-  for (int i=0;i<left.rows;++i) {
-    for (int j=0;j<left.cols;++j) {
+  for (int i=0;i<left.Rows();++i) {
+    for (int j=0;j<left.Cols();++j) {
       result.data[i][j] -= right.data[i][j];
     }
   }
@@ -288,10 +278,10 @@ Map2D operator - (Map2D left, Map2D right)
 
 template<class T> Map2D operator * (Map2D obj, T n)
 {
- Map2D result = obj;
+  Map2D result = obj;
 
-  for (int i=0;i<obj.rows;++i) {
-    for (int j=0;j<obj.cols;++j) {
+  for (int i=0;i<obj.Rows();++i) {
+    for (int j=0;j<obj.Cols();++j) {
       result.data[i][j] *= n;
     }
   }
@@ -301,10 +291,10 @@ template<class T> Map2D operator * (Map2D obj, T n)
 
 template<class T> Map2D operator * (T n, Map2D obj)
 {
- Map2D result = obj;
+  Map2D result = obj;
 
-  for (int i=0;i<obj.rows;++i) {
-    for (int j=0;j<obj.cols;++j) {
+  for (int i=0;i<obj.Rows();++i) {
+    for (int j=0;j<obj.Cols();++j) {
       result.data[i][j] *= n;
     }
   }
@@ -314,15 +304,15 @@ template<class T> Map2D operator * (T n, Map2D obj)
 
 Map2D operator * (Map2D left, Map2D right)
 {
-  if (left.rows != right.rows || left.cols != right.cols) {
+  if (left.Rows() != right.Rows() || left.Cols() != right.Cols()) {
     cerr << "ERROR : Map2D class operator \"*\" failed" << endl;
     exit(1);
   }
 
   Map2D result = left;
 
-  for (int i=0;i<left.rows;++i) {
-    for (int j=0;j<left.cols;++j) {
+  for (int i=0;i<left.Rows();++i) {
+    for (int j=0;j<left.Cols();++j) {
       result.data[i][j] *= right.data[i][j];
     }
   }
@@ -332,14 +322,14 @@ Map2D operator * (Map2D left, Map2D right)
 
 template<class T> Map2D operator / (Map2D obj, T n)
 {
- Map2D result = obj;
+  Map2D result = obj;
 
- if (n == 0) {
-   return result;
- }
+  if (n == 0) {
+    return result;
+  }
 
-  for (int i=0;i<obj.rows;++i) {
-    for (int j=0;j<obj.cols;++j) {
+  for (int i=0;i<obj.Rows();++i) {
+    for (int j=0;j<obj.Cols();++j) {
       result.data[i][j] /= n;
     }
   }
@@ -349,15 +339,15 @@ template<class T> Map2D operator / (Map2D obj, T n)
 
 Map2D operator / (Map2D left, Map2D right)
 {
-  if (left.rows != right.rows || left.cols != right.cols) {
+  if (left.Rows() != right.Rows() || left.Cols() != right.Cols()) {
     cerr << "ERROR : Map2D class operator \"/\" failed" << endl;
     exit(1);
   }
 
   Map2D result = left;
 
-  for (int i=0;i<left.rows;++i) {
-    for (int j=0;j<left.cols;++j) {
+  for (int i=0;i<left.Rows();++i) {
+    for (int j=0;j<left.Cols();++j) {
       double value = right.data[i][j];
       if (value != 0.0) {
 	result.data[i][j] /= value;
@@ -370,10 +360,10 @@ Map2D operator / (Map2D left, Map2D right)
 
 Map2D& Map2D::operator = (const Map2D& obj)
 {
-  this->set(obj.rows, obj.cols);
+  this->Resize(obj.Rows(), obj.Cols());
 
-  for (int i=0;i<obj.rows;++i) {
-    for (int j=0;j<obj.cols;++j) {
+  for (int i=0;i<obj.Rows();++i) {
+    for (int j=0;j<obj.Cols();++j) {
       this->data[i][j] = obj.data[i][j];
     }
   }
@@ -383,8 +373,8 @@ Map2D& Map2D::operator = (const Map2D& obj)
 
 template<class T> Map2D& Map2D::operator += (const T& n)
 {
-  for (int i=0;i<this->rows;++i) {
-    for (int j=0;j<this->cols;++j) {
+  for (int i=0;i<this->Rows();++i) {
+    for (int j=0;j<this->Cols();++j) {
       this->data[i][j] += n;
     }
   }
@@ -394,8 +384,8 @@ template<class T> Map2D& Map2D::operator += (const T& n)
 
 Map2D& Map2D::operator += (const Map2D& obj)
 {
-  for (int i=0;i<this->rows;++i) {
-    for (int j=0;j<this->cols;++j) {
+  for (int i=0;i<this->Rows();++i) {
+    for (int j=0;j<this->Cols();++j) {
       this->data[i][j] += obj.data[i][j];
     }
   }
@@ -405,8 +395,8 @@ Map2D& Map2D::operator += (const Map2D& obj)
 
 template<class T> Map2D& Map2D::operator -= (const T& n)
 {
-  for (int i=0;i<this->rows;++i) {
-    for (int j=0;j<this->cols;++j) {
+  for (int i=0;i<this->Rows();++i) {
+    for (int j=0;j<this->Cols();++j) {
       this->data[i][j] -= n;
     }
   }
@@ -416,8 +406,8 @@ template<class T> Map2D& Map2D::operator -= (const T& n)
 
 Map2D& Map2D::operator -= (const Map2D& obj)
 {
-  for (int i=0;i<this->rows;++i) {
-    for (int j=0;j<this->cols;++j) {
+  for (int i=0;i<this->Rows();++i) {
+    for (int j=0;j<this->Cols();++j) {
       this->data[i][j] -= obj.data[i][j];
     }
   }
@@ -427,8 +417,8 @@ Map2D& Map2D::operator -= (const Map2D& obj)
 
 template<class T> Map2D& Map2D::operator *= (const T& n)
 {
-  for (int i=0;i<this->rows;++i) {
-    for (int j=0;j<this->cols;++j) {
+  for (int i=0;i<this->Rows();++i) {
+    for (int j=0;j<this->Cols();++j) {
       this->data[i][j] *= n;
     }
   }
@@ -438,8 +428,8 @@ template<class T> Map2D& Map2D::operator *= (const T& n)
 
 Map2D& Map2D::operator *= (const Map2D& obj)
 {
-  for (int i=0;i<this->rows;++i) {
-    for (int j=0;j<this->cols;++j) {
+  for (int i=0;i<this->Rows();++i) {
+    for (int j=0;j<this->Cols();++j) {
       this->data[i][j] *= obj.data[i][j];
     }
   }
@@ -449,8 +439,8 @@ Map2D& Map2D::operator *= (const Map2D& obj)
 
 template<class T> Map2D& Map2D::operator /= (const T& n)
 {
-  for (int i=0;i<this->rows;++i) {
-    for (int j=0;j<this->cols;++j) {
+  for (int i=0;i<this->Rows();++i) {
+    for (int j=0;j<this->Cols();++j) {
       this->data[i][j] /= n;
     }
   }
@@ -460,8 +450,8 @@ template<class T> Map2D& Map2D::operator /= (const T& n)
 
 Map2D& Map2D::operator /= (const Map2D& obj)
 {
-  for (int i=0;i<this->rows;++i) {
-    for (int j=0;j<this->cols;++j) {
+  for (int i=0;i<this->Rows();++i) {
+    for (int j=0;j<this->Cols();++j) {
       double value = obj.data[i][j];
       if (value != 0.0) {
 	this->data[i][j] /= obj.data[i][j];
@@ -471,6 +461,33 @@ Map2D& Map2D::operator /= (const Map2D& obj)
   return *this;
 }
 
+class Map2D_C3
+{
+public :
+  vector<Map2D> color;
 
+  Map2D_C3(Map2D, Map2D, Map2D);
+    
+  Map2D& operator[] (int i);
+    
+};
+
+Map2D_C3::Map2D_C3(Map2D red, Map2D green, Map2D blue)
+{
+  color.push_back(red);
+  color.push_back(green);
+  color.push_back(blue);
+}
+  
+Map2D& Map2D_C3::operator[](int i)
+{
+  if (i < 0 || color.size() <= i) {
+    cerr << "ERROR: out of array range" << endl;
+    cerr << "in Map2D, operator[](int)" << endl;
+      exit(1);
+  }
+    
+  return color[i];
+}
 
 #endif

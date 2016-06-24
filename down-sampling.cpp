@@ -1,39 +1,14 @@
-#include <cstdlib>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <vector>
 #include <opencv2/opencv.hpp>
+#include "progress.hpp"
 
 using namespace std;
 using namespace cv;
 
 static const int CMD_LINE_NUM = 6;
-
-void dispProgressBar(double);
-
-void dispProgressBar(double percent)
-{
-  int max_bar_len = 25;
-  string progress_bar;
-
-  int bar_len = percent / (100 / max_bar_len);
-
-  for (int i=0;i<max_bar_len;++i) {
-    if (i < bar_len) {
-      progress_bar += '=';
-    }
-    else if (i == bar_len) {
-      progress_bar += '>';
-    }
-    else {
-      progress_bar += ' ';
-    }
-  }
-
-  printf("\r");
-  cerr << "[" << progress_bar << "] " << (int)(percent + 0.5) << "%";
-}
 
 int main(int argc, char* argv[])
 {
@@ -50,14 +25,15 @@ int main(int argc, char* argv[])
   int input_fps = (int)(input.get(CV_CAP_PROP_FPS) + 0.5);
   int frame_num = input.get(CV_CAP_PROP_FRAME_COUNT);
 
+  cout << frame_num << endl;
+
   /* output */
   String output_path = argv[2];
   int output_fps = atoi(argv[3]);
   int cols = input.get(CV_CAP_PROP_FRAME_WIDTH);
   int rows = input.get(CV_CAP_PROP_FRAME_HEIGHT);
-  int codec = VideoWriter::fourcc('P', 'I', 'M', '1');
   VideoWriter output;
-  output.open(output_path, codec, output_fps, Size(cols , rows));
+  output.open(output_path, CV_FOURCC('P','I','M','1'), output_fps, Size(cols , rows));
 
   int sampling_interval = atoi(argv[4]);
   int sampling_frames = atoi(argv[5]);
@@ -86,7 +62,7 @@ int main(int argc, char* argv[])
 	
 	output << frame;
 	
-	dispProgressBar((double)frame_cnt / frame_num * 100.0);
+	DispProgressBar((double)frame_cnt / frame_num * 100.0);
       }
     }
 
