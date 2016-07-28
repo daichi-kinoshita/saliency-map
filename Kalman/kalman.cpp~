@@ -1,0 +1,436 @@
+#include <iostream>
+#include <sstream>
+#include <fstream>
+#include <vector>
+#include <cmath>
+#include <cstdlib>
+
+using namespace std;
+
+class Mat
+{
+public :
+  int rows;
+  int cols;
+  double** element;
+
+  Mat();
+  Mat(int, int, double);
+  ~Mat();
+
+  Mat(const Mat&);
+
+  void free(void);
+  Mat inverse(void);
+  static Mat inverse(Mat);
+
+  double* operator[](int);
+  Mat& operator=(const Mat&);
+  Mat operator+(Mat);
+  Mat operator+(double);
+  Mat operator-(Mat);
+  Mat operator-(double);
+  Mat operator*(Mat);
+  Mat operator*(double);
+  Mat& operator += (Mat obj);
+  Mat& operator += (double);
+  Mat& operator -= (Mat obj);
+  Mat& operator -= (double);
+  Mat& operator *= (Mat obj);
+  Mat& operator *= (double);
+
+};
+
+Mat::Mat()
+{
+  rows = 0;
+  cols = 0;
+
+  element = NULL;
+}
+
+Mat::Mat(int rows, int cols, double init_val=0.0)
+{
+  this->rows = rows;
+  this->cols = cols;
+
+  element = new double*[rows];
+  for (int i=0;i<rows;++i) {
+    element[i] = new double[cols];
+
+    for (int j=0;j<cols;++j) {
+      element[i][j] = init_val;
+    }
+  }
+
+}
+
+Mat::~Mat()
+{
+  free();
+}
+
+Mat::Mat(const Mat& obj)
+{
+  rows = obj.rows;
+  cols = obj.cols;
+  
+  element = new double*[rows];
+  for (int i=0;i<rows;++i) {
+    element[i] = new double[cols];
+    
+    for (int j=0;j<cols;++j) {
+      element[i][j] = obj.element[i][j];
+    }   
+  }
+}
+
+void Mat::free(void)
+{
+  if (element != NULL) {
+
+    for (int i=0;i<rows;++i) {
+      delete[] element[i];
+    }
+    delete[] element;
+  }
+}
+
+Mat Mat::inverse(void)
+{
+  Mat res = *this;
+
+  res[0][0] = 1.0 / (*this)[0][0];
+
+  return res;
+}
+
+Mat Mat::inverse(Mat obj)
+{
+  obj[0][0] = 1.0 / obj[0][0];
+
+  return obj;
+}
+
+double* Mat::operator [] (int i)
+{
+  return element[i];
+}
+
+Mat& Mat::operator = (const Mat& obj)
+{
+  free();
+
+  rows = obj.rows;
+  cols = obj.cols;
+
+  element = new double*[rows];
+  for (int i=0;i<rows;++i) {
+    element[i] = new double[cols];
+    
+    for (int j=0;j<cols;++j) {
+      element[i][j] = obj.element[i][j];
+    }   
+  }
+
+  return *this;
+}
+
+
+Mat Mat::operator + (Mat obj)
+{
+  if (rows != obj.rows || cols != obj.cols) {
+    return *this;
+  }
+  
+  Mat res(rows, cols);
+
+  for (int i=0;i<rows;++i) {
+    for (int j=0;j<cols;++j) {
+      res[i][j] = element[i][j] + obj[i][j];
+    }
+  }
+
+  return res;
+}
+
+Mat Mat::operator + (double val)
+{ 
+  Mat res(rows, cols);
+
+  for (int i=0;i<rows;++i) {
+    for (int j=0;j<cols;++j) {
+      res[i][j] = element[i][j] + val;
+    }
+  }
+
+  return res;
+}
+
+Mat& Mat::operator += (Mat obj)
+{
+  if (rows != obj.rows || cols != obj.cols) {
+    return *this;
+  }
+
+  for (int i=0;i<rows;++i) {
+    for (int j=0;j<cols;++j) {
+      (*this)[i][j] += obj[i][j];
+    }
+  }
+
+  return *this;
+}
+
+Mat& Mat::operator += (double val)
+{
+  for (int i=0;i<rows;++i) {
+    for (int j=0;j<cols;++j) {
+      (*this)[i][j] += val;
+    }
+  }
+
+  return *this;
+}
+
+Mat Mat::operator - (Mat obj)
+{
+  if (rows != obj.rows || cols != obj.cols) {
+    return *this;
+  }
+  
+  Mat res(rows, cols);
+
+  for (int i=0;i<rows;++i) {
+    for (int j=0;j<cols;++j) {
+      res[i][j] = element[i][j] - obj[i][j];
+    }
+  }
+
+  return res;
+}
+
+Mat Mat::operator - (double val)
+{ 
+  Mat res(rows, cols);
+
+  for (int i=0;i<rows;++i) {
+    for (int j=0;j<cols;++j) {
+      res[i][j] = element[i][j] - val;
+    }
+  }
+
+  return res;
+}
+
+Mat& Mat::operator -= (Mat obj)
+{
+  if (rows != obj.rows || cols != obj.cols) {
+    return *this;
+  }
+
+  for (int i=0;i<rows;++i) {
+    for (int j=0;j<cols;++j) {
+      (*this)[i][j] -= obj[i][j];
+    }
+  }
+
+  return *this;
+}
+
+Mat& Mat::operator -= (double val)
+{
+  for (int i=0;i<rows;++i) {
+    for (int j=0;j<cols;++j) {
+      (*this)[i][j] -= val;
+    }
+  }
+
+  return *this;
+}
+
+Mat Mat::operator * (Mat obj)
+{
+  if (cols != obj.rows) {
+    return *this;
+  }
+  
+  Mat res(rows, obj.cols);
+
+  for (int i=0;i<rows;++i) {
+    for (int j=0;j<obj.cols;++j) {
+
+      double tmp = 0;
+      for (int k=0;k<cols;++k) {
+	tmp += element[i][k] * obj[k][j];
+      }
+      res[i][j] = tmp;
+
+    }
+  }
+
+  return res;
+}
+
+Mat Mat::operator * (double val)
+{ 
+  Mat res(rows, cols);
+
+  for (int i=0;i<rows;++i) {
+    for (int j=0;j<cols;++j) {
+      res[i][j] = element[i][j] * val;
+    }
+  }
+
+  return res;
+}
+
+Mat& Mat::operator *= (Mat obj)
+{
+  if (cols != obj.rows) {
+    return *this;
+  }
+ 
+  for (int i=0;i<rows;++i) {
+    for (int j=0;j<obj.cols;++j) {
+
+      double tmp = 0;
+      for (int k=0;k<cols;++k) {
+	tmp += element[i][k] * obj[k][j];
+      }
+      (*this)[i][j] = tmp;
+
+    }
+  }
+
+  return *this;
+}
+
+Mat& Mat::operator *= (double val)
+{
+  for (int i=0;i<rows;++i) {
+    for (int j=0;j<cols;++j) {
+      (*this)[i][j] *= val;
+    }
+  }
+
+  return *this;
+}
+
+
+
+
+
+
+class NormalDist
+{
+public :
+  double mean;
+  double var;
+
+  NormalDist();
+  NormalDist(double, double);
+
+  Mat get(void);
+};
+
+NormalDist::NormalDist()
+{
+  NormalDist(0, 1);
+}
+
+NormalDist::NormalDist(double mean, double var)
+{
+  this->mean = mean;
+  this->var  = var;
+}
+
+Mat NormalDist::get(void)
+{
+  Mat res(1, 1);
+
+  double x = (double)rand() / RAND_MAX;
+  double y = (double)rand() / RAND_MAX;
+
+  double z = sqrt(-2.0*log(x)) * cos(2.0*M_PI*y);
+
+  res[0][0] = mean + sqrt(var) * z;
+
+  return res;
+}
+
+
+int main(int argc, char* argv[])
+{
+  ifstream input(argv[1]);
+  ofstream output1(argv[2]);
+  ofstream output2(argv[3]);
+  
+  vector<Mat> Y;  // data
+  int T = 0;
+
+  // input
+  int tmp;
+  Mat data(1, 1);
+  string str;
+  while (getline(input, str)) {
+    sscanf(str.data(), "%d %lf", &tmp, &data[0][0]);
+
+    Y.push_back(data);
+    T++;
+  }
+
+  Mat x[T];  // system model
+  Mat y[T];  // observation model
+  Mat V[T];  // Variance-covariance
+  Mat k[T];  // kalman gain
+
+  // initial
+  x[0] = Mat(1, 1, -0.909); 
+  V[0] = Mat(1, 1, 32.2);
+
+  // parameter
+  Mat F(1, 1, 1.0);
+  Mat G(1, 1, 1.0);
+  Mat H(1, 1, 1.0);
+  Mat Q(1, 1, 0.0040);
+  Mat R(1, 1, 1.0);
+
+  // system noise
+  NormalDist sys_noise(0, Q[0][0]);
+  // observation noize
+  NormalDist obs_noise(0, R[0][0]);
+
+  Mat v(1, 1);
+  Mat w(1, 1);
+
+  for (int t=1;t<T;++t) {
+    v = sys_noise.get();
+    w = obs_noise.get();
+
+    //estimate
+    x[t] = F * x[t-1] + G * v;
+
+    V[t] = F * V[t-1] * F.inverse() + G * Q * G.inverse();
+
+    y[t] = H * x[t-1] + w;
+
+    //filtering
+    k[t]  = V[t] * Mat::inverse(V[t] + R);
+    
+    x[t] += k[t] * (Y[t] - H * x[t]);
+    V[t] -= k[t] * H * V[t];
+  }
+
+
+
+  for (int t=0;t<T;++t) {
+    output1 << t << " " << x[t][0][0] << " " << sqrt(V[t][0][0]) << " " << -sqrt(V[t][0][0]) << endl;
+  }
+  
+  for (int t=1;t<T;++t) {
+    output2 << t << " " << Y[t][0][0] << " " << y[t][0][0]  << endl;
+  }
+
+  return 0;
+}
